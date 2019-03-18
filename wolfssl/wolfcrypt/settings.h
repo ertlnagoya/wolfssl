@@ -196,6 +196,7 @@
     #include "user_settings.h"
 #endif
 
+#include <wolfssl/options.h>
 
 /* make sure old RNG name is used with CTaoCrypt FIPS */
 #ifdef HAVE_FIPS

@@ -183,6 +183,7 @@ typedef WOLFSSL_X509_STORE_CTX X509_STORE_CTX;
 #define TLSv1_3_client_method           wolfTLSv1_3_client_method
 
 #define X509_FILETYPE_ASN1 SSL_FILETYPE_ASN1
+#define X509_FILETYPE_DEFAULT SSL_FILETYPE_DEFAULT
 
 #ifdef WOLFSSL_DTLS
     #define DTLSv1_client_method        wolfDTLSv1_client_method
