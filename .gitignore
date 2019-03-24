@@ -22,8 +22,6 @@ build-aux/
 rpm/spec
 *.rpm
 stamp-h
-cyassl/options.h
-wolfssl/options.h
 libtool.m4
 aclocal.m4
 aminclude.am
