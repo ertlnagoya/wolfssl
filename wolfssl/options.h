@@ -18,6 +18,11 @@ extern "C" {
 #undef  HAVE_FFDHE_2048
 #define HAVE_FFDHE_2048
 
+    #define WOLFSSL_LWIP
+    #define NO_WRITEV
+    #define SINGLE_THREADED
+    #define WOLFSSL_USER_IO
+
 #undef  WOLFSSL_VERIFY_CB_ALL_CERTS
 #define WOLFSSL_VERIFY_CB_ALL_CERTS
 
