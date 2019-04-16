@@ -44,7 +44,7 @@
 /* #define WOLFSSL_DEOS*/
 
 /* Uncomment next line if using Mbed */
-/* #define MBED */
+ #define MBED 
 
 /* Uncomment next line if using Microchip PIC32 ethernet starter kit */
 /* #define MICROCHIP_PIC32 */
