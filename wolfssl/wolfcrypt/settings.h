@@ -44,7 +44,7 @@
 /* #define WOLFSSL_DEOS*/
 
 /* Uncomment next line if using Mbed */
-/* #define MBED */
+ #define MBED
 
 /* Uncomment next line if using Microchip PIC32 ethernet starter kit */
 /* #define MICROCHIP_PIC32 */
@@ -338,7 +338,7 @@
 #ifdef MBED
     #define WOLFSSL_USER_IO
     #define NO_FILESYSTEM
-    #define NO_CERTS
+    //#define NO_CERTS
     #if !defined(USE_CERT_BUFFERS_2048) && !defined(USE_CERT_BUFFERS_4096)
         #define USE_CERT_BUFFERS_1024
     #endif
