@@ -1,6 +1,6 @@
 /* aes.h
  *
- * Copyright (C) 2006-2017 wolfSSL Inc.
+ * Copyright (C) 2006-2020 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -55,6 +55,12 @@ typedef struct WOLFSSL_AES_KEY {
     #endif
     #ifdef WOLFSSL_AFALG
     void* afalg_holder[288 / sizeof(void*)];
+    #endif
+    #ifdef HAVE_PKCS11
+    void* pkcs11_holder[(AES_MAX_ID_LEN + sizeof(int)) / sizeof(void*)];
+    #endif
+    #if defined(WOLFSSL_ASYNC_CRYPT) || defined(WOLF_CRYPTO_CB)
+    void* async_holder[128 / sizeof(void*)];
     #endif
 } WOLFSSL_AES_KEY;
 typedef WOLFSSL_AES_KEY AES_KEY;

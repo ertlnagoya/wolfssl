@@ -1,6 +1,6 @@
 /* rsa.h
  *
- * Copyright (C) 2006-2017 wolfSSL Inc.
+ * Copyright (C) 2006-2020 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -80,6 +80,10 @@
 #include "xsecure_rsa.h"
 #endif
 
+#if defined(WOLFSSL_CRYPTOCELL)
+    #include <wolfssl/wolfcrypt/port/arm/cryptoCell.h>
+#endif
+
 #ifdef __cplusplus
     extern "C" {
 #endif
@@ -124,6 +128,11 @@ enum {
 #endif
 #ifdef WC_RSA_PSS
     RSA_PSS_PAD_TERM = 0xBC,
+#endif
+
+    RSA_PSS_SALT_LEN_DEFAULT  = -1,
+#ifdef WOLFSSL_PSS_SALT_LEN_DISCOVER
+    RSA_PSS_SALT_LEN_DISCOVER = -2,
 #endif
 
 #ifdef HAVE_PKCS11
@@ -182,6 +191,9 @@ struct RsaKey {
 #ifdef WOLFSSL_AFALG_XILINX_RSA
     int alFd;
     int rdFd;
+#endif
+#if defined(WOLFSSL_CRYPTOCELL)
+    rsa_context_t ctx;
 #endif
 };
 
@@ -266,9 +278,8 @@ WOLFSSL_API int  wc_RsaPublicKeyDecode(const byte* input, word32* inOutIdx,
                                                                RsaKey*, word32);
 WOLFSSL_API int  wc_RsaPublicKeyDecodeRaw(const byte* n, word32 nSz,
                                         const byte* e, word32 eSz, RsaKey* key);
-#ifdef WOLFSSL_KEY_GEN
-    WOLFSSL_API int wc_RsaKeyToDer(RsaKey*, byte* output, word32 inLen);
-#endif
+WOLFSSL_API int wc_RsaKeyToDer(RsaKey*, byte* output, word32 inLen);
+
 
 #ifdef WC_RSA_BLINDING
     WOLFSSL_API int wc_RsaSetRNG(RsaKey* key, WC_RNG* rng);
@@ -313,7 +324,7 @@ WOLFSSL_API int wc_RsaDirect(byte* in, word32 inLen, byte* out, word32* outSz,
                    RsaKey* key, int type, WC_RNG* rng);
 #endif
 
-#endif /* HAVE_FIPS*/
+#endif /* HAVE_FIPS */
 
 WOLFSSL_API int  wc_RsaFlattenPublicKey(RsaKey*, byte*, word32*, byte*,
                                                                        word32*);

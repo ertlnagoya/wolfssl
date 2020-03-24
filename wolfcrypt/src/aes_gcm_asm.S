@@ -1,6 +1,6 @@
 /* aes_gcm_asm
  *
- * Copyright (C) 2006-2018 wolfSSL Inc.
+ * Copyright (C) 2006-2020 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -22,9 +22,9 @@
 #ifndef HAVE_INTEL_AVX1
 #define HAVE_INTEL_AVX1
 #endif /* HAVE_INTEL_AVX1 */
-#ifndef HAVE_INTEL_AVX2
+#ifndef NO_AVX2_SUPPORT
 #define HAVE_INTEL_AVX2
-#endif /* HAVE_INTEL_AVX2 */
+#endif /* NO_AVX2_SUPPORT */
 
 #ifndef __APPLE__
 .data

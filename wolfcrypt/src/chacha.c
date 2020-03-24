@@ -1,6 +1,6 @@
 /* chacha.c
  *
- * Copyright (C) 2006-2017 wolfSSL Inc.
+ * Copyright (C) 2006-2020 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -17,7 +17,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
- *
+ */
+
+/*
  *  based from
  *  chacha-ref.c version 20080118
  *  D. J. Bernstein
@@ -25,7 +27,10 @@
  */
 
 
+#ifdef WOLFSSL_ARMASM
+    /* implementation is located in wolfcrypt/src/port/arm/armv8-chacha.c */
 
+#else
 #ifdef HAVE_CONFIG_H
     #include <config.h>
 #endif
@@ -121,6 +126,7 @@ int wc_Chacha_SetIV(ChaCha* ctx, const byte* inIv, word32 counter)
 
     XMEMCPY(temp, inIv, CHACHA_IV_BYTES);
 
+    ctx->left = 0; /* resets state */
     ctx->X[CHACHA_IV_BYTES+0] = counter;           /* block counter */
     ctx->X[CHACHA_IV_BYTES+1] = LITTLE32(temp[0]); /* fixed variable from nonce */
     ctx->X[CHACHA_IV_BYTES+2] = LITTLE32(temp[1]); /* counter from nonce */
@@ -195,6 +201,7 @@ int wc_Chacha_SetKey(ChaCha* ctx, const byte* key, word32 keySz)
     ctx->X[ 1] = constants[1];
     ctx->X[ 2] = constants[2];
     ctx->X[ 3] = constants[3];
+    ctx->left = 0; /* resets state */
 
     return 0;
 }
@@ -258,17 +265,28 @@ static void wc_Chacha_encrypt_bytes(ChaCha* ctx, const byte* m, byte* c,
     word32 temp[CHACHA_CHUNK_WORDS]; /* used to make sure aligned */
     word32 i;
 
-    output = (byte*)temp;
+    /* handle left overs */
+    if (bytes > 0 && ctx->left > 0) {
+        wc_Chacha_wordtobyte(temp, ctx->X); /* recreate the stream */
+        output = (byte*)temp + CHACHA_CHUNK_BYTES - ctx->left;
+        for (i = 0; i < bytes && i < ctx->left; i++) {
+            c[i] = m[i] ^ output[i];
+        }
+        ctx->left = ctx->left - i;
 
-    for (; bytes > 0;) {
+        /* Used up all of the stream that was left, increment the counter */
+        if (ctx->left == 0) {
+            ctx->X[CHACHA_IV_BYTES] = PLUSONE(ctx->X[CHACHA_IV_BYTES]);
+        }
+        bytes = bytes - i;
+        c += i;
+        m += i;
+    }
+
+    output = (byte*)temp;
+    while (bytes >= CHACHA_CHUNK_BYTES) {
         wc_Chacha_wordtobyte(temp, ctx->X);
         ctx->X[CHACHA_IV_BYTES] = PLUSONE(ctx->X[CHACHA_IV_BYTES]);
-        if (bytes <= CHACHA_CHUNK_BYTES) {
-            for (i = 0; i < bytes; ++i) {
-                c[i] = m[i] ^ output[i];
-            }
-            return;
-        }
         for (i = 0; i < CHACHA_CHUNK_BYTES; ++i) {
             c[i] = m[i] ^ output[i];
         }
@@ -276,7 +294,19 @@ static void wc_Chacha_encrypt_bytes(ChaCha* ctx, const byte* m, byte* c,
         c += CHACHA_CHUNK_BYTES;
         m += CHACHA_CHUNK_BYTES;
     }
+
+    if (bytes) {
+        /* in this case there will always be some left over since bytes is less
+         * than CHACHA_CHUNK_BYTES, so do not increment counter after getting
+         * stream in order for the stream to be recreated on next call */
+        wc_Chacha_wordtobyte(temp, ctx->X);
+        for (i = 0; i < bytes; ++i) {
+            c[i] = m[i] ^ output[i];
+        }
+        ctx->left = CHACHA_CHUNK_BYTES - i;
+    }
 }
+
 
 /**
   * API to encrypt/decrypt a message of any size.
@@ -315,3 +345,4 @@ int wc_Chacha_Process(ChaCha* ctx, byte* output, const byte* input,
 
 #endif /* HAVE_CHACHA*/
 
+#endif /* WOLFSSL_ARMASM */

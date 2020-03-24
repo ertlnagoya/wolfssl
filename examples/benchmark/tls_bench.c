@@ -1,8 +1,8 @@
 /* tls_bench.c
  *
- * Copyright (C) 2006-2017 wolfSSL Inc.
+ * Copyright (C) 2006-2020 wolfSSL Inc.
  *
- * This file is part of wolfSSL. (formerly known as CyaSSL)
+ * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
 
@@ -40,7 +40,7 @@ bench_tls(args);
 #endif
 #include <wolfssl/wolfcrypt/settings.h>
 #include <wolfssl/ssl.h>
-
+#include <wolfssl/wolfcrypt/hash.h> /* WC_MAX_DIGEST_SIZE */
 #include <wolfssl/test.h>
 
 #include <examples/benchmark/tls_bench.h>
@@ -57,6 +57,7 @@ bench_tls(args);
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <errno.h>
 
 /* For testing no pthread support */
 #if 0
@@ -80,16 +81,40 @@ bench_tls(args);
 #define BENCH_DEFAULT_HOST  "localhost"
 #define BENCH_DEFAULT_PORT  11112
 #define NUM_THREAD_PAIRS    1 /* Thread pairs of server/client */
-#define BENCH_RUNTIME_SEC   1
-#define MEM_BUFFER_SZ       ((16 * 1024) + 38 + 32) /* Must be large enough to handle max packet size plus max TLS header MAX_MSG_EXTRA */
-#define TEST_PACKET_SIZE    (16 * 1024) /* TLS packet size */
-#define TEST_MAX_SIZE       (16 * 1024) /* Total bytes to benchmark */
-#define SHOW_VERBOSE        0 /* Default output is tab delimited format */
+#ifndef BENCH_RUNTIME_SEC
+    #ifdef BENCH_EMBEDDED
+        #define BENCH_RUNTIME_SEC   15
+    #else
+        #define BENCH_RUNTIME_SEC   1
+    #endif
+#endif
+/* TLS packet size */
+#ifndef TEST_PACKET_SIZE
+    #ifdef BENCH_EMBEDDED
+        #define TEST_PACKET_SIZE    (2 * 1024)
+    #else
+        #define TEST_PACKET_SIZE    (16 * 1024)
+    #endif
+#endif
+/* Total bytes to benchmark per connection */
+#ifndef TEST_MAX_SIZE
+    #ifdef BENCH_EMBEDDED
+        #define TEST_MAX_SIZE       (16 * 1024)
+    #else
+        #define TEST_MAX_SIZE       (128 * 1024)
+    #endif
+#endif
 
-static const char* kShutdown = "shutdown";
+/* In memory transfer buffer maximum size */
+/* Must be large enough to handle max TLS packet size plus max TLS header MAX_MSG_EXTRA */
+#define MEM_BUFFER_SZ       (TEST_PACKET_SIZE + 38 + WC_MAX_DIGEST_SIZE)
+#define SHOW_VERBOSE        0 /* Default output is tab delimited format */
 
 #if (!defined(NO_WOLFSSL_CLIENT) || !defined(NO_WOLFSSL_SERVER)) && \
     !defined(WOLFCRYPT_ONLY)
+
+/* shutdown message - nice signal to server, we are done */
+static const char* kShutdown = "shutdown";
 
 #ifndef NO_WOLFSSL_CLIENT
 static const char* kTestStr =
@@ -422,18 +447,18 @@ static int SocketRecv(int sockFd, char* buf, int sz)
     int recvd = (int)recv(sockFd, buf, sz, 0);
     if (recvd == -1) {
         switch (errno) {
-    #if EAGAIN != EWOULDBLOCK
+    #if EAGAIN != SOCKET_EWOULDBLOCK
         case EAGAIN: /* EAGAIN == EWOULDBLOCK on some systems, but not others */
     #endif
-        case EWOULDBLOCK:
+        case SOCKET_EWOULDBLOCK:
             return WOLFSSL_CBIO_ERR_WANT_READ;
-        case ECONNRESET:
+        case SOCKET_ECONNRESET:
             return WOLFSSL_CBIO_ERR_CONN_RST;
-        case EINTR:
+        case SOCKET_EINTR:
             return WOLFSSL_CBIO_ERR_ISR;
-        case ECONNREFUSED: /* DTLS case */
+        case SOCKET_ECONNREFUSED: /* DTLS case */
             return WOLFSSL_CBIO_ERR_WANT_READ;
-        case ECONNABORTED:
+        case SOCKET_ECONNABORTED:
             return WOLFSSL_CBIO_ERR_CONN_CLOSE;
         default:
             return WOLFSSL_CBIO_ERR_GENERAL;
@@ -450,16 +475,16 @@ static int SocketSend(int sockFd, char* buf, int sz)
     int sent = (int)send(sockFd, buf, sz, 0);
     if (sent == -1) {
         switch (errno) {
-    #if EAGAIN != EWOULDBLOCK
+    #if EAGAIN != SOCKET_EWOULDBLOCK
         case EAGAIN: /* EAGAIN == EWOULDBLOCK on some systems, but not others */
     #endif
-        case EWOULDBLOCK:
+        case SOCKET_EWOULDBLOCK:
             return WOLFSSL_CBIO_ERR_WANT_READ;
-        case ECONNRESET:
+        case SOCKET_ECONNRESET:
             return WOLFSSL_CBIO_ERR_CONN_RST;
-        case EINTR:
+        case SOCKET_EINTR:
             return WOLFSSL_CBIO_ERR_ISR;
-        case EPIPE:
+        case SOCKET_EPIPE:
             return WOLFSSL_CBIO_ERR_CONN_CLOSE;
         default:
             return WOLFSSL_CBIO_ERR_GENERAL;
@@ -611,7 +636,12 @@ static int bench_tls_client(info_t* info)
         cli_ctx = wolfSSL_CTX_new(wolfTLSv1_3_client_method());
 #endif
     if (!tls13)
+#if !defined(WOLFSSL_TLS13)
         cli_ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
+#elif !defined(WOLFSSL_NO_TLS12)
+        cli_ctx = wolfSSL_CTX_new(wolfTLSv1_2_client_method());
+#endif
+
     if (cli_ctx == NULL) {
         printf("error creating ctx\n");
         ret = MEMORY_E; goto exit;
@@ -843,7 +873,11 @@ static void* client_thread(void* args)
 static int SetupSocketAndListen(int* listenFd, word32 port)
 {
     struct sockaddr_in servAddr;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    char optval = 1;
+#else
     int optval = 1;
+#endif
 
     /* Setup server address */
     XMEMSET(&servAddr, 0, sizeof(servAddr));
@@ -860,7 +894,8 @@ static int SetupSocketAndListen(int* listenFd, word32 port)
     }
 
     /* allow reuse */
-    if (setsockopt(*listenFd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+    if (setsockopt(*listenFd, SOL_SOCKET, SO_REUSEADDR,
+                &optval, sizeof(optval)) == -1) {
         printf("setsockopt SO_REUSEADDR failed\n");
         return -1;
     }
@@ -893,7 +928,7 @@ static int SocketWaitClient(info_t* info)
     socklen_t size = sizeof(clientAddr);
 
     if ((connd = accept(info->listenFd, (struct sockaddr*)&clientAddr, &size)) == -1) {
-        if (errno == EWOULDBLOCK)
+        if (errno == SOCKET_EWOULDBLOCK)
             return -2;
         printf("ERROR: failed to accept the connection\n");
         return -1;
@@ -1195,10 +1230,10 @@ static void print_stats(stats_t* wcStat, const char* desc, const char* cipher, i
            cipher,
            wcStat->txTotal + wcStat->rxTotal,
            wcStat->connCount,
-           wcStat->txTime * 1000,
            wcStat->rxTime * 1000,
-           wcStat->txTotal / wcStat->txTime / 1024 / 1024,
+           wcStat->txTime * 1000,
            wcStat->rxTotal / wcStat->rxTime / 1024 / 1024,
+           wcStat->txTotal / wcStat->txTime / 1024 / 1024,
            wcStat->connTime * 1000,
            wcStat->connTime * 1000 / wcStat->connCount);
 }
@@ -1230,7 +1265,7 @@ static void Usage(void)
 
 static void ShowCiphers(void)
 {
-    char ciphers[4096];
+    char ciphers[WOLFSSL_CIPHER_LIST_MAX_SIZE];
 
     int ret = wolfSSL_get_ciphers(ciphers, (int)sizeof(ciphers));
 
@@ -1249,8 +1284,8 @@ int bench_tls(void* args)
     stats_t cli_comb, srv_comb;
     int i;
     char *cipher, *next_cipher, *ciphers = NULL;
-    int     argc = ((func_args*)args)->argc;
-    char**  argv = ((func_args*)args)->argv;
+    int     argc = 0;
+    char**  argv = NULL;
     int    ch;
 
     /* Vars configured by command line arguments */
@@ -1273,8 +1308,11 @@ int bench_tls(void* args)
     int listenFd = -1;
 #endif
 
-    if (args)
+    if (args != NULL) {
+        argc = ((func_args*)args)->argc;
+        argv = ((func_args*)args)->argv;
         ((func_args*)args)->return_code = -1; /* error state */
+    }
 
     /* Initialize wolfSSL */
     wolfSSL_Init();
@@ -1368,12 +1406,11 @@ int bench_tls(void* args)
     }
     else {
         /* Run for each cipher */
-        const int ciphersSz = 4096;
-        ciphers = (char*)XMALLOC(ciphersSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        ciphers = (char*)XMALLOC(WOLFSSL_CIPHER_LIST_MAX_SIZE, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (ciphers == NULL) {
             goto exit;
         }
-        wolfSSL_get_ciphers(ciphers, ciphersSz);
+        wolfSSL_get_ciphers(ciphers, WOLFSSL_CIPHER_LIST_MAX_SIZE);
         cipher = ciphers;
     }
 
@@ -1405,6 +1442,8 @@ int bench_tls(void* args)
         if (ret != 0) goto exit;
     }
 #endif
+
+    printf("Running TLS Benchmarks...\n");
 
     /* parse by : */
     while ((cipher != NULL) && (cipher[0] != '\0')) {

@@ -1,8 +1,8 @@
 /* server-tls-callback.c
  *
- * Copyright (C) 2006-2019 wolfSSL Inc.
+ * Copyright (C) 2006-2020 wolfSSL Inc.
  *
- * This file is part of wolfSSL. (formerly known as CyaSSL)
+ * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 /* the usual suspects */
 #include <stdlib.h>
@@ -64,7 +64,7 @@ static void ShowCiphers(void)
 #include "wolfssl/wolfcrypt/port/atmel/atmel.h"
 
 /* when you want to use a custom slot allocation */
-/* enable the difinition CUSTOM_SLOT_ALLOCATION. */
+/* enable the definition CUSTOM_SLOT_ALLOCATION. */
 
 #if defined(CUSTOM_SLOT_ALLOCATION)
 
@@ -133,6 +133,7 @@ void tls_smp_server_task()
     size_t             len;
     int                shutdown = 0;
     int                ret;
+    const char msg[] = "I hear you fa shizzle!";
 
     /* declare wolfSSL objects */
     WOLFSSL_CTX* ctx;
@@ -245,7 +246,7 @@ void tls_smp_server_task()
         }
         /* Write our reply into buff */
         memset(buff, 0, sizeof(buff));
-        memcpy(buff, "I hear ya fa shizzle!", sizeof(buff));
+        memcpy(buff, msg, sizeof(msg));
         len = strnlen(buff, sizeof(buff));
         /* Reply back to the client */
         if (wolfSSL_write(ssl, buff, len) != len) {

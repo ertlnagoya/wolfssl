@@ -22,9 +22,12 @@
     #define NO_RABBIT
     #define NO_DSA
     #define NO_MD4
+
+    #define GCM_NONCE_MID_SZ 12
 #else
     /* Enables blinding mode, to prevent timing attacks */
     #define WC_RSA_BLINDING
+    #define NO_MULTIBYTE_PRINT
 
     #if defined(WOLFSSL_LIB)
         /* The lib */
@@ -47,6 +50,22 @@
         #define HAVE_ECC
         #define ECC_SHAMIR
         #define ECC_TIMING_RESISTANT
+
+        /* Optional Performance Speedups */
+        #if 0
+            /* AESNI on x64 */
+            #ifdef _WIN64
+                #define HAVE_INTEL_RDSEED
+                #define WOLFSSL_AESNI
+            #endif
+
+            /* Single Precision Support for RSA/DH 1024/2048/3072 and ECC P-256 */
+            #define WOLFSSL_SP
+            #define WOLFSSL_HAVE_SP_ECC
+            #define WOLFSSL_HAVE_SP_DH
+            #define WOLFSSL_HAVE_SP_RSA
+        #endif
+
     #else
         /* The servers and clients */
         #define OPENSSL_EXTRA

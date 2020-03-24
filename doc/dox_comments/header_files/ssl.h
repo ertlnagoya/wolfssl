@@ -3871,6 +3871,29 @@ WOLFSSL_API long wolfSSL_BIO_set_fd(WOLFSSL_BIO* b, int fd, int flag);
 /*!
     \ingroup IO
 
+    \brief Sets the close flag, used to indicate that the i/o stream should be
+     closed when the BIO is freed
+
+    \return SSL_SUCCESS(1) upon success.
+
+    \param bio WOLFSSL_BIO structure.
+    \param flag flag for behavior when closing i/o stream.
+
+    _Example_
+    \code
+    WOLFSSL_BIO* bio;
+    // setup bio
+    wolfSSL_BIO_set_close(bio, BIO_NOCLOSE);
+    \endcode
+
+    \sa wolfSSL_BIO_new
+    \sa wolfSSL_BIO_free
+*/
+WOLFSSL_API int wolfSSL_BIO_set_close(WOLFSSL_BIO *b, long flag);
+
+/*!
+    \ingroup IO
+
     \brief This is used to get a BIO_SOCKET type WOLFSSL_BIO_METHOD.
 
     \return WOLFSSL_BIO_METHOD pointer to a WOLFSSL_BIO_METHOD structure
@@ -4493,7 +4516,7 @@ WOLFSSL_API WOLFSSL_STACK* wolfSSL_X509_STORE_CTX_get_chain(
     is WOLFSSL_CRL_CHECK.
 
     \return SSL_SUCCESS If no errors were encountered when setting the flag.
-    \return <0 a negative vlaue will be returned upon failure.
+    \return <0 a negative value will be returned upon failure.
 
     \param str certificate store to set flag in.
     \param flag flag for behavior.
@@ -4859,6 +4882,35 @@ WOLFSSL_API long wolfSSL_get_verify_result(const WOLFSSL *ssl);
 WOLFSSL_API void  wolfSSL_ERR_print_errors_fp(FILE*, int err);
 
 /*!
+    \ingroup Debug
+
+    \brief This function uses the provided callback to handle error reporting.
+    The callback function is executed for each error line. The string, length,
+    and userdata are passed into the callback parameters.
+
+    \return none No returns.
+
+    \param cb the callback function.
+    \param u userdata to pass into the callback function.
+
+    _Example_
+    \code
+    int error_cb(const char *str, size_t len, void *u)
+    { fprintf((FILE*)u, "%-*.*s\n", (int)len, (int)len, str); return 0; }
+    ...
+    FILE* fp = ...
+    wolfSSL_ERR_print_errors_cb(error_cb, fp);
+    \endcode
+
+    \sa wolfSSL_get_error
+    \sa wolfSSL_ERR_error_string
+    \sa wolfSSL_ERR_error_string_n
+    \sa wolfSSL_load_error_strings
+*/
+WOLFSSL_API void  wolfSSL_ERR_print_errors_cb (
+        int (*cb)(const char *str, size_t len, void *u), void *u);
+
+/*!
     \brief The function sets the client_psk_cb member of the
     WOLFSSL_CTX structure.
 
@@ -4901,7 +4953,7 @@ WOLFSSL_API void wolfSSL_CTX_set_psk_client_callback(WOLFSSL_CTX*,
     WOLFSSL* ssl;
     unsigned int cb(WOLFSSL*, const char*, char*) // Header of function*
     {
-    	// Funciton body
+    	// Function body
     }
     …
     cb = wc_psk_client_callback;
@@ -5000,7 +5052,7 @@ WOLFSSL_API const char* wolfSSL_get_psk_identity(const WOLFSSL*);
     …
     ret = wolfSSL_CTX_use_psk_identity_hint(ctx, hint);
     if(ret == SSL_SUCCESS){
-    	// Function was succesfull.
+    	// Function was successful.
 	return ret;
     } else {
     	// Failure case.
@@ -5187,7 +5239,7 @@ WOLFSSL_API WOLFSSL_METHOD *wolfSSLv23_server_method(void);
 
     \brief This is used to get the internal error state of the WOLFSSL structure.
 
-    \return wolfssl_error returns ssl error state, usualy a negative
+    \return wolfssl_error returns ssl error state, usually a negative
     \return BAD_FUNC_ARG if ssl is NULL.
 
     \return ssl WOLFSSL structure to get state from.
@@ -5399,7 +5451,7 @@ WOLFSSL_API const char* wolfSSL_lib_version(void);
     \brief This function returns the current library version in hexadecimal
     notation.
 
-    \return LILBWOLFSSL_VERSION_HEX returns the hexidecimal version defined in
+    \return LILBWOLFSSL_VERSION_HEX returns the hexadecimal version defined in
      wolfssl/version.h.
 
     \param none No parameters.
@@ -5819,7 +5871,7 @@ WOLFSSL_API const unsigned char* wolfSSL_X509_get_der(WOLFSSL_X509*, int*);
     \brief This function checks to see if x509 is NULL and if it’s not,
     it returns the notAfter member of the x509 struct.
 
-    \return pointer returns a constant byte pointer to the notAfter
+    \return pointer to struct with ASN1_TIME to the notAfter
     member of the x509 struct.
     \return NULL returned if the x509 object is NULL.
 
@@ -5830,15 +5882,15 @@ WOLFSSL_API const unsigned char* wolfSSL_X509_get_der(WOLFSSL_X509*, int*);
     WOLFSSL_X509* x509 = (WOLFSSL_X509)XMALOC(sizeof(WOLFSSL_X509), NULL,
     DYNAMIC_TYPE_X509) ;
     ...
-    byte* notAfter = wolfSSL_X509_notAfter(x509);
+    const WOLFSSL_ASN1_TIME* notAfter = wolfSSL_X509_get_notAfter(x509);
     if(notAfter == NULL){
-	    // Failure case, the x509 object is null.
+        // Failure case, the x509 object is null.
     }
     \endcode
 
-    \sa none
+    \sa wolfSSL_X509_get_notBefore
 */
-WOLFSSL_API const unsigned char* wolfSSL_X509_notAfter(WOLFSSL_X509*);
+WOLFSSL_API WOLFSSL_ASN1_TIME* wolfSSL_X509_get_notAfter(WOLFSSL_X509*);
 
 /*!
     \ingroup CertsKeys
@@ -6126,6 +6178,45 @@ WOLFSSL_API WC_PKCS12* wolfSSL_d2i_PKCS12_bio(WOLFSSL_BIO* bio,
 /*!
     \ingroup openSSL
 
+    \brief wolfSSL_i2d_PKCS12_bio (i2d_PKCS12_bio) copies in the cert
+    information from the structure WC_PKCS12 to WOLFSSL_BIO.
+
+    \return 1 for success.
+    \return Failure 0.
+
+    \param bio WOLFSSL_BIO structure to write PKCS12 buffer to.
+    \param pkcs12 WC_PKCS12 structure for PKCS12 structure as input.
+
+    _Example_
+    \code
+    WC_PKCS12 pkcs12;
+    FILE *f;
+    byte buffer[5300];
+    char file[] = "./test.p12";
+    int bytes;
+    WOLFSSL_BIO* bio;
+    pkcs12 = wc_PKCS12_new();
+    f = fopen(file, "rb");
+    bytes = (int)fread(buffer, 1, sizeof(buffer), f);
+    fclose(f);
+    //convert the DER file into an internal structure
+    wc_d2i_PKCS12(buffer, bytes, pkcs12);
+    bio = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
+    //convert PKCS12 structure into bio
+    wolfSSL_i2d_PKCS12_bio(bio, pkcs12);
+    wc_PKCS12_free(pkcs)
+    //use bio
+    \endcode
+
+    \sa wolfSSL_PKCS12_parse
+    \sa wc_PKCS12_free
+*/
+WOLFSSL_API WC_PKCS12* wolfSSL_i2d_PKCS12_bio(WOLFSSL_BIO* bio,
+                                       WC_PKCS12* pkcs12);
+
+/*!
+    \ingroup openSSL
+
     \brief PKCS12 can be enabled with adding –enable-opensslextra to the
     configure command. It can use triple DES and RC4 for decryption so would
     recommend also enabling these features when enabling opensslextra
@@ -6409,7 +6500,7 @@ WOLFSSL_API int  wolfSSL_CTX_SetTmpDH_buffer(WOLFSSL_CTX*, const unsigned char* 
     a subroutine is passed a NULL argument.
     \return SSL_BAD_FILE returned if the certificate file is unable to open or
     if the a set of checks on the file fail from wolfSSL_SetTmpDH_file_wrapper.
-    \return SSL_BAD_FILETYPE returned if teh format is not PEM or ASN.1 from
+    \return SSL_BAD_FILETYPE returned if the format is not PEM or ASN.1 from
     wolfSSL_SetTmpDH_buffer_wrapper().
     \return DH_KEY_SIZE_E returned if the DH parameter's key size is less than
     the value of the minDhKeySz member of the WOLFSSL_CTX struct.
@@ -8703,7 +8794,7 @@ WOLFSSL_API int wolfSSL_CertManagerUnload_trust_peers(WOLFSSL_CERT_MANAGER* cm);
     \brief Specifies the certificate to verify with the Certificate Manager
     context.  The format can be SSL_FILETYPE_PEM or SSL_FILETYPE_ASN1.
 
-    \return SSL_SUCCESS If successfull.
+    \return SSL_SUCCESS If successful.
     \return ASN_SIG_CONFIRM_E will be returned if the signature could not be
     verified.
     \return ASN_SIG_OID_E will be returned if the signature type is not
@@ -8805,6 +8896,38 @@ WOLFSSL_API int wolfSSL_CertManagerVerify(WOLFSSL_CERT_MANAGER*, const char* f,
 */
 WOLFSSL_API int wolfSSL_CertManagerVerifyBuffer(WOLFSSL_CERT_MANAGER* cm,
                                 const unsigned char* buff, long sz, int format);
+
+/*!
+    \ingroup CertManager
+    \brief The function sets the verifyCallback function in the Certificate
+    Manager. If present, it will be called for each cert loaded. If there is
+    a verification error, the verify callback can be used to over-ride the
+    error.
+
+    \return none No return.
+
+    \param cm a pointer to a WOLFSSL_CERT_MANAGER structure, created using
+    wolfSSL_CertManagerNew().
+    \param vc a VerifyCallback function pointer to the callback routine
+
+    _Example_
+    \code
+    #include <wolfssl/ssl.h>
+
+    int myVerify(int preverify, WOLFSSL_X509_STORE_CTX* store)
+    { // do custom verification of certificate }
+
+    WOLFSSL_CTX* ctx = WOLFSSL_CTX_new(Protocol define);
+    WOLFSSL_CERT_MANAGER* cm = wolfSSL_CertManagerNew();
+    ...
+    wolfSSL_CertManagerSetVerify(cm, myVerify);
+
+    \endcode
+
+    \sa wolfSSL_CertManagerVerify
+*/
+WOLFSSL_API void wolfSSL_CertManagerSetVerify(WOLFSSL_CERT_MANAGER* cm,
+                                                             VerifyCallback vc);
 
 /*!
     \brief Check CRL if the option is enabled and compares the cert to the
@@ -9426,7 +9549,7 @@ WOLFSSL_API int wolfSSL_SetOCSP_OverrideURL(WOLFSSL*, const char*);
     WOLFSSL_CERT_MANAGER structure.
 
     \return SSL_SUCCESS returned if the function executes without error.
-    The ocspIOCb, ocspRespFreeCb, and ocspIOCtx memebers of the CM are set.
+    The ocspIOCb, ocspRespFreeCb, and ocspIOCtx members of the CM are set.
     \return BAD_FUNC_ARG returned if the WOLFSSL or WOLFSSL_CERT_MANAGER
     structures are NULL.
 
@@ -11207,7 +11330,7 @@ int wolfSSL_DeriveTlsKeys(unsigned char* key_data, word32 keyLen,
     \sa wolfSSL_accept_ex
 */
 WOLFSSL_API int wolfSSL_connect_ex(WOLFSSL*, HandShakeCallBack, TimeoutCallBack,
-                                 Timeval);
+                                 WOLFSSL_TIMEVAL);
 
 /*!
     \brief wolfSSL_accept_ex() is an extension that allows a HandShake Callback
@@ -11239,7 +11362,7 @@ WOLFSSL_API int wolfSSL_connect_ex(WOLFSSL*, HandShakeCallBack, TimeoutCallBack,
     \sa wolfSSL_connect_ex
 */
 WOLFSSL_API int wolfSSL_accept_ex(WOLFSSL*, HandShakeCallBack, TimeoutCallBack,
-                                Timeval);
+                                WOLFSSL_TIMEVAL);
 
 /*!
     \ingroup IO
@@ -11323,6 +11446,33 @@ WOLFSSL_API long wolfSSL_BIO_get_fp(WOLFSSL_BIO *bio, XFILE* fp);
     \sa wolfSSL_free
 */
 WOLFSSL_API int wolfSSL_check_private_key(const WOLFSSL* ssl);
+
+/*!
+    \ingroup CertsKeys
+
+    \brief This function looks for and returns the extension index
+    matching the passed in NID value.
+
+    \return >= 0 If successful the extension index is returned.
+    \return -1 If extension is not found or error is encountered.
+
+    \param x509 certificate to get parse through for extension.
+    \param nid extension OID to be found.
+    \param lastPos start search from extension after lastPos.
+                   Set to -1 initially.
+
+    _Example_
+    \code
+    const WOLFSSL_X509* x509;
+    int lastPos = -1;
+    int idx;
+
+    idx = wolfSSL_X509_get_ext_by_NID(x509, NID_basic_constraints, lastPos);
+    \endcode
+
+*/
+WOLFSSL_API int wolfSSL_X509_get_ext_by_NID(const WOLFSSL_X509* x509,
+                                             int nid, int lastPos);
 
 /*!
     \ingroup CertsKeys
@@ -12144,8 +12294,8 @@ WOLFSSL_API char* wolfSSL_X509_get_next_altname(WOLFSSL_X509*);
     \brief The function checks to see if x509 is NULL and if it’s not, it
     returns the notBefore member of the x509 struct.
 
-    \return pointer This function returns a constant byte pointer to the x509’s
-    member notAfter.
+    \return pointer to struct with ASN1_TIME to the notBefore
+        member of the x509 struct.
     \return NULL the function returns NULL if the x509 structure is NULL.
 
     \param x509 a pointer to the WOLFSSL_X509 struct.
@@ -12155,15 +12305,15 @@ WOLFSSL_API char* wolfSSL_X509_get_next_altname(WOLFSSL_X509*);
     WOLFSSL_X509* x509 = (WOLFSSL_X509)XMALLOC(sizeof(WOLFSSL_X509), NULL,
     DYNAMIC_TYPE_X509) ;
     …
-    byte* notAfter = wolfSSL_X509_notAfter(x509);
+    const WOLFSSL_ASN1_TIME* notAfter = wolfSSL_X509_get_notBefore(x509);
     if(notAfter == NULL){
             //The x509 object was NULL
     }
     \endcode
 
-    \sa wolfSSL_X509_notAfter
+    \sa wolfSSL_X509_get_notAfter
 */
-WOLFSSL_API const unsigned char* wolfSSL_X509_notBefore(WOLFSSL_X509*);
+WOLFSSL_API WOLFSSL_ASN1_TIME* wolfSSL_X509_get_notBefore(WOLFSSL_X509*);
 
 /*!
     \ingroup IO

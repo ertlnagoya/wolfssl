@@ -1,8 +1,8 @@
 /* client-tls-callback.c
  *
- * Copyright (C) 2006-2019 wolfSSL Inc.
+ * Copyright (C) 2006-2020 wolfSSL Inc.
  *
- * This file is part of wolfSSL. (formerly known as CyaSSL)
+ * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 /* the usual suspects */
 #include <stdlib.h>
@@ -131,6 +131,7 @@ void tls_smp_client_task()
     size_t len;
     struct hostent *hp;
     struct ip4_addr *ip4_addr;
+    const char sndMsg[] = "GET /index.html HTTP/1.0\r\n\r\n";
 
     /* declare wolfSSL objects */
     WOLFSSL_CTX *ctx;
@@ -257,8 +258,8 @@ void tls_smp_client_task()
 
     if(sendGet){
         printf("SSL connect ok, sending GET...\n");
-        len = 28;
-        strncpy(buff, "GET /index.html HTTP/1.0\r\n\r\n", 28);
+        len = XSTRLEN(sndMsg);
+        strncpy(buff, sndMsg, len);
         buff[len] = '\0';
     } else {
         sprintf(buff, "message from esp32 tls client\n");

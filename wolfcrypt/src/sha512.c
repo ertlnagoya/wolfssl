@@ -1,6 +1,6 @@
 /* sha512.c
  *
- * Copyright (C) 2006-2017 wolfSSL Inc.
+ * Copyright (C) 2006-2020 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -221,9 +221,12 @@ static int InitSha512(wc_Sha512* sha512)
         esp_sha_hw_unlock();
     }
     /* always set mode as INIT
-    *  whether using HW or SW is detemined at first call of update()
+    *  whether using HW or SW is determined at first call of update()
     */
     sha512->ctx.mode = ESP32_SHA_INIT;
+#endif
+#if defined(WOLFSSL_HASH_FLAGS) || defined(WOLF_CRYPTO_CB)
+    sha512->flags = 0;
 #endif
     return 0;
 }
@@ -752,6 +755,9 @@ static WC_INLINE int Sha512Final(wc_Sha512* sha512)
      defined(NO_WOLFSSL_ESP32WROOM32_CRYPT_HASH)
         ret = Transform_Sha512(sha512);
 #else
+       if(sha512->ctx.mode == ESP32_SHA_INIT) {
+            esp_sha_try_hw_lock(&sha512->ctx);
+       }
         ret = esp_sha512_process(sha512);
         if(ret == 0 && sha512->ctx.mode == ESP32_SHA_SW){
             ret = Transform_Sha512(sha512);
@@ -927,10 +933,13 @@ static int InitSha384(wc_Sha384* sha384)
         esp_sha_hw_unlock();
     }
     /* always set mode as INIT
-    *  whether using HW or SW is detemined at first call of update()
+    *  whether using HW or SW is determined at first call of update()
     */
     sha384->ctx.mode = ESP32_SHA_INIT;
 
+#endif
+#if defined(WOLFSSL_HASH_FLAGS) || defined(WOLF_CRYPTO_CB)
+    sha384->flags = 0;
 #endif
 
     return 0;

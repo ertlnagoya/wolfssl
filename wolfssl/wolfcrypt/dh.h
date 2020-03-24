@@ -1,6 +1,6 @@
 /* dh.h
  *
- * Copyright (C) 2006-2017 wolfSSL Inc.
+ * Copyright (C) 2006-2020 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -57,14 +57,22 @@ typedef struct DhParams {
 } DhParams;
 
 /* Diffie-Hellman Key */
-typedef struct DhKey {
+struct DhKey {
     mp_int p, g, q;                         /* group parameters  */
+#if defined(WOLFSSL_QT) || defined(OPENSSL_ALL) || defined(WOLFSSL_OPENSSH)
+    mp_int pub;
+    mp_int priv;
+#endif
     void* heap;
 #ifdef WOLFSSL_ASYNC_CRYPT
     WC_ASYNC_DEV asyncDev;
 #endif
-} DhKey;
+};
 
+#ifndef WC_DH_TYPE_DEFINED
+    typedef struct DhKey DhKey;
+    #define WC_DH_TYPE_DEFINED
+#endif
 
 #ifdef HAVE_FFDHE_2048
 WOLFSSL_API const DhParams* wc_Dh_ffdhe2048_Get(void);
@@ -98,6 +106,10 @@ WOLFSSL_API int wc_DhSetKey(DhKey* key, const byte* p, word32 pSz, const byte* g
                         word32 gSz);
 WOLFSSL_API int wc_DhSetKey_ex(DhKey* key, const byte* p, word32 pSz,
                         const byte* g, word32 gSz, const byte* q, word32 qSz);
+#if defined(WOLFSSL_QT) || defined(OPENSSL_ALL)
+WOLFSSL_LOCAL int wc_DhSetFullKeys(DhKey* key,const byte* priv_key,word32 privSz,
+                                   const byte* pub_key, word32 pubSz);
+#endif
 WOLFSSL_API int wc_DhSetCheckKey(DhKey* key, const byte* p, word32 pSz,
                         const byte* g, word32 gSz, const byte* q, word32 qSz,
                         int trusted, WC_RNG* rng);
@@ -106,6 +118,8 @@ WOLFSSL_API int wc_DhParamsLoad(const byte* input, word32 inSz, byte* p,
 WOLFSSL_API int wc_DhCheckPubKey(DhKey* key, const byte* pub, word32 pubSz);
 WOLFSSL_API int wc_DhCheckPubKey_ex(DhKey* key, const byte* pub, word32 pubSz,
                             const byte* prime, word32 primeSz);
+WOLFSSL_API int wc_DhCheckPubValue(const byte* prime, word32 primeSz,
+                                   const byte* pub, word32 pubSz);
 WOLFSSL_API int wc_DhCheckPrivKey(DhKey* key, const byte* priv, word32 pubSz);
 WOLFSSL_API int wc_DhCheckPrivKey_ex(DhKey* key, const byte* priv, word32 pubSz,
                             const byte* prime, word32 primeSz);

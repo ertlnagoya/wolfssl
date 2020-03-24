@@ -1,8 +1,8 @@
 /* atmel.h
  *
- * Copyright (C) 2006-2018 wolfSSL Inc.
+ * Copyright (C) 2006-2020 wolfSSL Inc.
  *
- * This file is part of wolfSSL. (formerly known as CyaSSL)
+ * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
 #ifndef _ATECC508_H_
@@ -115,17 +115,17 @@ int  atmel_ecc_verify(const byte* message, const byte* signature,
 #endif /* WOLFSSL_ATECC508A */
 
 #ifdef HAVE_PK_CALLBACKS
-    int atcatls_create_key_cb(struct WOLFSSL* ssl, struct ecc_key* key, word32 keySz,
+    int atcatls_create_key_cb(struct WOLFSSL* ssl, struct ecc_key* key, unsigned int keySz,
         int ecc_curve, void* ctx);
     int atcatls_create_pms_cb(struct WOLFSSL* ssl, struct ecc_key* otherKey,
-        unsigned char* pubKeyDer, unsigned int* pubKeySz,
-        unsigned char* out, unsigned int* outlen,
+        unsigned char* pubKeyDer, word32* pubKeySz,
+        unsigned char* out, word32* outlen,
         int side, void* ctx);
-    int atcatls_sign_certificate_cb(struct WOLFSSL* ssl, const byte* in, word32 inSz,
-        byte* out, word32* outSz, const byte* key, word32 keySz, void* ctx);
-    int atcatls_verify_signature_cb(struct WOLFSSL* ssl, const byte* sig, word32 sigSz,
-        const byte* hash, word32 hashSz, const byte* key, word32 keySz, int* result,
-        void* ctx);
+    int atcatls_sign_certificate_cb(struct WOLFSSL* ssl, const byte* in, unsigned int inSz,
+        byte* out, word32* outSz, const byte* key, unsigned int keySz, void* ctx);
+    int atcatls_verify_signature_cb(struct WOLFSSL* ssl, const byte* sig, unsigned int sigSz,
+        const byte* hash, unsigned int hashSz, const byte* key, unsigned int keySz,
+        int* result, void* ctx);
 
     int atcatls_set_callbacks(struct WOLFSSL_CTX* ctx);
     int atcatls_set_callback_ctx(struct WOLFSSL* ssl, void* user_ctx);

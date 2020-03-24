@@ -11,7 +11,8 @@
 #include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/random.h>
 #include <wolfssl/wolfcrypt/mem_track.h>
-#if defined(OPENSSL_EXTRA) && defined(SHOW_CERTS)
+#if defined(SHOW_CERTS) && \
+    (defined(OPENSSL_EXTRA) || defined(OPENSSL_EXTRA_X509_SMALL))
     #include <wolfssl/wolfcrypt/asn.h> /* for domain component NID value */
 #endif
 
@@ -36,6 +37,12 @@
     #endif /* HAVE_ED25519 */
     #ifdef HAVE_CURVE25519
         #include <wolfssl/wolfcrypt/curve25519.h>
+    #endif /* HAVE_ECC */
+    #ifdef HAVE_ED448
+        #include <wolfssl/wolfcrypt/ed448.h>
+    #endif /* HAVE_ED448 */
+    #ifdef HAVE_CURVE448
+        #include <wolfssl/wolfcrypt/curve448.h>
     #endif /* HAVE_ECC */
 #endif /*HAVE_PK_CALLBACKS */
 
@@ -155,9 +162,12 @@
     #pragma warning(disable:4244 4996)
 #endif
 
+#ifndef WOLFSSL_CIPHER_LIST_MAX_SIZE
+    #define WOLFSSL_CIPHER_LIST_MAX_SIZE 4096
+#endif
 /* Buffer for benchmark tests */
 #ifndef TEST_BUFFER_SIZE
-#define TEST_BUFFER_SIZE 16384
+    #define TEST_BUFFER_SIZE 16384
 #endif
 
 #ifndef WOLFSSL_HAVE_MIN
@@ -286,56 +296,70 @@
 
 /* all certs relative to wolfSSL home directory now */
 #if defined(WOLFSSL_NO_CURRDIR) || defined(WOLFSSL_MDK_SHELL)
-#define caCertFile     "certs/ca-cert.pem"
-#define eccCertFile    "certs/server-ecc.pem"
-#define eccKeyFile     "certs/ecc-key.pem"
-#define eccRsaCertFile "certs/server-ecc-rsa.pem"
-#define svrCertFile    "certs/server-cert.pem"
-#define svrKeyFile     "certs/server-key.pem"
-#define cliCertFile    "certs/client-cert.pem"
-#define cliCertDerFile "certs/client-cert.der"
-#define cliKeyFile     "certs/client-key.pem"
-#define ntruCertFile   "certs/ntru-cert.pem"
-#define ntruKeyFile    "certs/ntru-key.raw"
-#define dhParamFile    "certs/dh2048.pem"
-#define cliEccKeyFile  "certs/ecc-client-key.pem"
-#define cliEccCertFile "certs/client-ecc-cert.pem"
-#define caEccCertFile  "certs/ca-ecc-cert.pem"
-#define crlPemDir      "certs/crl"
-#define edCertFile     "certs/ed25519/server-ed25519-cert.pem"
-#define edKeyFile      "certs/ed25519/server-ed25519-priv.pem"
-#define cliEdCertFile  "certs/ed25519/client-ed25519.pem"
-#define cliEdKeyFile   "certs/ed25519/client-ed25519-priv.pem"
-#define caEdCertFile   "certs/ed25519/ca-ed25519.pem"
+#define caCertFile        "certs/ca-cert.pem"
+#define eccCertFile       "certs/server-ecc.pem"
+#define eccKeyFile        "certs/ecc-key.pem"
+#define eccRsaCertFile    "certs/server-ecc-rsa.pem"
+#define svrCertFile       "certs/server-cert.pem"
+#define svrKeyFile        "certs/server-key.pem"
+#define cliCertFile       "certs/client-cert.pem"
+#define cliCertDerFile    "certs/client-cert.der"
+#define cliCertFileExt    "certs/client-cert-ext.pem"
+#define cliCertDerFileExt "certs/client-cert-ext.der"
+#define cliKeyFile        "certs/client-key.pem"
+#define ntruCertFile      "certs/ntru-cert.pem"
+#define ntruKeyFile       "certs/ntru-key.raw"
+#define dhParamFile       "certs/dh2048.pem"
+#define cliEccKeyFile     "certs/ecc-client-key.pem"
+#define cliEccCertFile    "certs/client-ecc-cert.pem"
+#define caEccCertFile     "certs/ca-ecc-cert.pem"
+#define crlPemDir         "certs/crl"
+#define edCertFile        "certs/ed25519/server-ed25519-cert.pem"
+#define edKeyFile         "certs/ed25519/server-ed25519-priv.pem"
+#define cliEdCertFile     "certs/ed25519/client-ed25519.pem"
+#define cliEdKeyFile      "certs/ed25519/client-ed25519-priv.pem"
+#define caEdCertFile      "certs/ed25519/ca-ed25519.pem"
+#define ed448CertFile     "certs/ed448/server-ed448-cert.pem"
+#define ed448KeyFile      "certs/ed448/server-ed448-priv.pem"
+#define cliEd448CertFile  "certs/ed448/client-ed448.pem"
+#define cliEd448KeyFile   "certs/ed448/client-ed448-priv.pem"
+#define caEd448CertFile   "certs/ed448/ca-ed448.pem"
 #ifdef HAVE_WNR
     /* Whitewood netRandom default config file */
-    #define wnrConfig  "wnr-example.conf"
+    #define wnrConfig     "wnr-example.conf"
 #endif
 #else
-#define caCertFile     "./certs/ca-cert.pem"
-#define eccCertFile    "./certs/server-ecc.pem"
-#define eccKeyFile     "./certs/ecc-key.pem"
-#define eccRsaCertFile "./certs/server-ecc-rsa.pem"
-#define svrCertFile    "./certs/server-cert.pem"
-#define svrKeyFile     "./certs/server-key.pem"
-#define cliCertFile    "./certs/client-cert.pem"
-#define cliCertDerFile "./certs/client-cert.der"
-#define cliKeyFile     "./certs/client-key.pem"
-#define ntruCertFile   "./certs/ntru-cert.pem"
-#define ntruKeyFile    "./certs/ntru-key.raw"
-#define dhParamFile    "./certs/dh2048.pem"
-#define cliEccKeyFile  "./certs/ecc-client-key.pem"
-#define cliEccCertFile "./certs/client-ecc-cert.pem"
-#define caEccCertFile  "./certs/ca-ecc-cert.pem"
-#define crlPemDir      "./certs/crl"
-#define edCertFile     "./certs/ed25519/server-ed25519-cert.pem"
-#define edKeyFile      "./certs/ed25519/server-ed25519-priv.pem"
-#define cliEdCertFile  "./certs/ed25519/client-ed25519.pem"
-#define cliEdKeyFile   "./certs/ed25519/client-ed25519-priv.pem"
-#define caEdCertFile   "./certs/ed25519/ca-ed25519.pem"
+#define caCertFile        "./certs/ca-cert.pem"
+#define eccCertFile       "./certs/server-ecc.pem"
+#define eccKeyFile        "./certs/ecc-key.pem"
+#define eccRsaCertFile    "./certs/server-ecc-rsa.pem"
+#define svrCertFile       "./certs/server-cert.pem"
+#define svrKeyFile        "./certs/server-key.pem"
+#define cliCertFile       "./certs/client-cert.pem"
+#define cliCertDerFile    "./certs/client-cert.der"
+#define cliCertFileExt    "./certs/client-cert-ext.pem"
+#define cliCertDerFileExt "./certs/client-cert-ext.der"
+#define cliKeyFile        "./certs/client-key.pem"
+#define ntruCertFile      "./certs/ntru-cert.pem"
+#define ntruKeyFile       "./certs/ntru-key.raw"
+#define dhParamFile       "./certs/dh2048.pem"
+#define cliEccKeyFile     "./certs/ecc-client-key.pem"
+#define cliEccCertFile    "./certs/client-ecc-cert.pem"
+#define caEccCertFile     "./certs/ca-ecc-cert.pem"
+#define crlPemDir         "./certs/crl"
+#define edCertFile        "./certs/ed25519/server-ed25519-cert.pem"
+#define edKeyFile         "./certs/ed25519/server-ed25519-priv.pem"
+#define cliEdCertFile     "./certs/ed25519/client-ed25519.pem"
+#define cliEdKeyFile      "./certs/ed25519/client-ed25519-priv.pem"
+#define caEdCertFile      "./certs/ed25519/ca-ed25519.pem"
+#define ed448CertFile     "./certs/ed448/server-ed448-cert.pem"
+#define ed448KeyFile      "./certs/ed448/server-ed448-priv.pem"
+#define cliEd448CertFile  "./certs/ed448/client-ed448.pem"
+#define cliEd448KeyFile   "./certs/ed448/client-ed448-priv.pem"
+#define caEd448CertFile   "./certs/ed448/ca-ed448.pem"
 #ifdef HAVE_WNR
     /* Whitewood netRandom default config file */
-    #define wnrConfig  "./wnr-example.conf"
+    #define wnrConfig     "./wnr-example.conf"
 #endif
 #endif
 
@@ -481,8 +505,8 @@ static WC_INLINE int mygetopt(int argc, char** argv, const char* optstring)
         if (myoptind == 0)
             myoptind++;
 
-        if (myoptind >= argc || argv[myoptind][0] != '-' ||
-                                argv[myoptind][1] == '\0') {
+        if (myoptind >= argc || argv[myoptind] == NULL ||
+                argv[myoptind][0] != '-' || argv[myoptind][1] == '\0') {
             myoptarg = NULL;
             if (myoptind < argc)
                 myoptarg = argv[myoptind];
@@ -576,7 +600,7 @@ static const char* client_showpeer_msg[][8] = {
 #endif
 };
 
-#if defined(KEEP_PEER_CERT) || defined(SESSION_CERTS)
+#if defined(KEEP_PEER_CERT) || defined(KEEP_OUR_CERT) || defined(SESSION_CERTS)
 static const char* client_showx509_msg[][5] = {
     /* English */
     {
@@ -643,12 +667,11 @@ static WC_INLINE void ShowX509Ex(WOLFSSL_X509* x509, const char* hdr,
     XFREE(subject, 0, DYNAMIC_TYPE_OPENSSL);
     XFREE(issuer,  0, DYNAMIC_TYPE_OPENSSL);
 
-#if defined(OPENSSL_EXTRA) && defined(SHOW_CERTS)
+#if defined(SHOW_CERTS) && defined(OPENSSL_EXTRA)
     {
         WOLFSSL_BIO* bio;
         char buf[256]; /* should be size of ASN_NAME_MAX */
         int  textSz;
-
 
         /* print out domain component if certificate has it */
         textSz = wolfSSL_X509_NAME_get_text_by_NID(
@@ -665,7 +688,7 @@ static WC_INLINE void ShowX509Ex(WOLFSSL_X509* x509, const char* hdr,
             wolfSSL_BIO_free(bio);
         }
     }
-#endif
+#endif /* SHOW_CERTS && OPENSSL_EXTRA */
 }
 /* original ShowX509 to maintain compatibility */
 static WC_INLINE void ShowX509(WOLFSSL_X509* x509, const char* hdr)
@@ -673,9 +696,10 @@ static WC_INLINE void ShowX509(WOLFSSL_X509* x509, const char* hdr)
     ShowX509Ex(x509, hdr, 0);
 }
 
-#endif /* KEEP_PEER_CERT || SESSION_CERTS */
+#endif /* KEEP_PEER_CERT || KEEP_OUR_CERT || SESSION_CERTS */
 
-#if defined(SESSION_CERTS) && defined(SHOW_CERTS)
+#if defined(SHOW_CERTS) && defined(SESSION_CERTS) && \
+    (defined(OPENSSL_EXTRA) || defined(OPENSSL_EXTRA_X509_SMALL))
 static WC_INLINE void ShowX509Chain(WOLFSSL_X509_CHAIN* chain, int count,
     const char* hdr)
 {
@@ -697,7 +721,7 @@ static WC_INLINE void ShowX509Chain(WOLFSSL_X509_CHAIN* chain, int count,
         wolfSSL_FreeX509(chainX509);
     }
 }
-#endif
+#endif /* SHOW_CERTS && SESSION_CERTS */
 
 /* lng_index is to specify the language for displaying message.              */
 /* 0:English, 1:Japanese                                                     */
@@ -706,7 +730,8 @@ static WC_INLINE void showPeerEx(WOLFSSL* ssl, int lng_index)
     WOLFSSL_CIPHER* cipher;
     const char** words = client_showpeer_msg[lng_index];
 
-#if defined(HAVE_ECC) || !defined(NO_DH)
+#if defined(HAVE_ECC) || defined(HAVE_CURVE25519) || defined(HAVE_CURVE448) || \
+                                                                 !defined(NO_DH)
     const char *name;
 #endif
 #ifndef NO_DH
@@ -720,10 +745,11 @@ static WC_INLINE void showPeerEx(WOLFSSL* ssl, int lng_index)
         printf("peer has no cert!\n");
     wolfSSL_FreeX509(peer);
 #endif
-#if defined(SHOW_CERTS) && defined(OPENSSL_EXTRA) && defined(KEEP_OUR_CERT)
+#if defined(SHOW_CERTS) && defined(KEEP_OUR_CERT) && \
+    (defined(OPENSSL_EXTRA) || defined(OPENSSL_EXTRA_X509_SMALL))
     ShowX509(wolfSSL_get_certificate(ssl), "our cert info:");
     printf("Peer verify result = %lu\n", wolfSSL_get_verify_result(ssl));
-#endif /* SHOW_CERTS */
+#endif /* SHOW_CERTS && KEEP_OUR_CERT */
     printf("%s %s\n", words[0], wolfSSL_get_version(ssl));
 
     cipher = wolfSSL_get_current_cipher(ssl);
@@ -733,7 +759,8 @@ static WC_INLINE void showPeerEx(WOLFSSL* ssl, int lng_index)
 #else
     printf("%s %s\n", words[1], wolfSSL_CIPHER_get_name(cipher));
 #endif
-#if defined(HAVE_ECC) || !defined(NO_DH)
+#if defined(HAVE_ECC) || defined(HAVE_CURVE25519) || defined(HAVE_CURVE448) || \
+                                                                 !defined(NO_DH)
     if ((name = wolfSSL_get_curve_name(ssl)) != NULL)
         printf("%s %s\n", words[2], name);
 #endif
@@ -748,7 +775,8 @@ static WC_INLINE void showPeerEx(WOLFSSL* ssl, int lng_index)
         printf("%s\n", words[5]);
 #endif
 
-#if defined(SESSION_CERTS) && defined(SHOW_CERTS)
+#if defined(SHOW_CERTS) && defined(SESSION_CERTS) && \
+    (defined(OPENSSL_EXTRA) || defined(OPENSSL_EXTRA_X509_SMALL))
     {
         WOLFSSL_X509_CHAIN* chain;
 
@@ -762,7 +790,7 @@ static WC_INLINE void showPeerEx(WOLFSSL* ssl, int lng_index)
         }
     #endif
     }
-#endif /* SESSION_CERTS && SHOW_CERTS */
+#endif /* SHOW_CERTS && SESSION_CERTS */
   (void)ssl;
 }
 /* original showPeer to maintain compatibility */
@@ -1154,6 +1182,8 @@ static WC_INLINE void udp_accept(SOCKET_T* sockfd, SOCKET_T* clientfd,
     tcp_ready* ready = args->signal;
     ready->ready = 1;
     ready->port = port;
+#else
+    (void)port;
 #endif
 
     *clientfd = *sockfd;
@@ -1205,7 +1235,7 @@ static WC_INLINE void tcp_accept(SOCKET_T* sockfd, SOCKET_T* clientfd,
                 ready = args->signal;
 
             if (ready) {
-                srf = fopen(ready->srfName, "w");
+                srf = XFOPEN(ready->srfName, "w");
 
                 if (srf) {
                     /* let's write port sever is listening on to ready file
@@ -1485,7 +1515,7 @@ static WC_INLINE void OCSPRespFreeCb(void* ioCtx, unsigned char* response)
         *bufLen = 0;
 
         /* open file (read-only binary) */
-        file = fopen(fname, "rb");
+        file = XFOPEN(fname, "rb");
         if (!file) {
             printf("Error loading %s\n", fname);
             return BAD_PATH_ERROR;
@@ -1639,11 +1669,25 @@ static WC_INLINE void OCSPRespFreeCb(void* ioCtx, unsigned char* response)
 #endif /* !NO_CERTS */
 
 static int myVerifyFail = 0;
+
+/* The verify callback is called for every certificate only when
+ * --enable-opensslextra is defined because it sets WOLFSSL_ALWAYS_VERIFY_CB and
+ * WOLFSSL_VERIFY_CB_ALL_CERTS.
+ * Normal cases of the verify callback only occur on certificate failures when the
+ * wolfSSL_set_verify(ssl, SSL_VERIFY_PEER, myVerifyCb); is called
+*/
+
 static WC_INLINE int myVerify(int preverify, WOLFSSL_X509_STORE_CTX* store)
 {
     char buffer[WOLFSSL_MAX_ERROR_SZ];
 #if defined(OPENSSL_EXTRA) || defined(OPENSSL_EXTRA_X509_SMALL)
     WOLFSSL_X509* peer;
+#if defined(SHOW_CERTS) && !defined(NO_FILESYSTEM)
+    WOLFSSL_BIO* bio = NULL;
+    WOLFSSL_STACK* sk = NULL;
+    X509* x509 = NULL;
+    int i = 0;
+#endif
 #endif
     (void)preverify;
 
@@ -1675,6 +1719,24 @@ static WC_INLINE int myVerify(int preverify, WOLFSSL_X509_STORE_CTX* store)
                                                                   subject);
         XFREE(subject, 0, DYNAMIC_TYPE_OPENSSL);
         XFREE(issuer,  0, DYNAMIC_TYPE_OPENSSL);
+#if defined(SHOW_CERTS) && !defined(NO_FILESYSTEM)
+/* avoid printing duplicate certs */
+        if (store->depth == 1) {
+            /* retrieve x509 certs and display them on stdout */
+            sk = wolfSSL_X509_STORE_GetCerts(store);
+
+            for (i = 0; i < wolfSSL_sk_X509_num(sk); i++) {
+                x509 = wolfSSL_sk_X509_value(sk, i);
+                bio = wolfSSL_BIO_new(wolfSSL_BIO_s_file());
+                if (bio != NULL) {
+                    wolfSSL_BIO_set_fp(bio, stdout, BIO_NOCLOSE);
+                    wolfSSL_X509_print(bio, x509);
+                    wolfSSL_BIO_free(bio);
+                }
+            }
+            wolfSSL_sk_X509_free(sk);
+        }
+#endif
     }
     else
         printf("\tPeer has no cert!\n");
@@ -1687,8 +1749,8 @@ static WC_INLINE int myVerify(int preverify, WOLFSSL_X509_STORE_CTX* store)
             printf("\t\tCert %d: Ptr %p, Len %u\n", i, cert->buffer, cert->length);
         }
     }
-    #endif
-#endif
+    #endif /* SHOW_CERTS */
+#endif /* OPENSSL_EXTRA || OPENSSL_EXTRA_X509_SMALL */
 
     printf("\tSubject's domain name at %d is %s\n", store->error_depth, store->domain);
 
@@ -1849,7 +1911,7 @@ static WC_INLINE void CaCb(unsigned char* der, int sz, int type)
             int depth, res;
             XFILE file;
             for(depth = 0; depth <= MAX_WOLF_ROOT_DEPTH; depth++) {
-                file = fopen(ntruKeyFile, "rb");
+                file = XFOPEN(ntruKeyFile, "rb");
                 if (file != NULL) {
                     fclose(file);
                     return depth;
@@ -1883,7 +1945,7 @@ static WC_INLINE int StackSizeCheck(func_args* args, thread_func tf)
     int            ret, i, used;
     void*          status;
     unsigned char* myStack = NULL;
-    int            stackSize = 1024*128;
+    int            stackSize = 1024*152;
     pthread_attr_t myAttr;
     pthread_t      threadId;
 
@@ -1969,7 +2031,7 @@ static WC_INLINE void StackTrap(void)
 #endif /* STACK_TRAP */
 
 
-#ifdef ATOMIC_USER
+#if defined(ATOMIC_USER) && !defined(WOLFSSL_AEAD_ONLY)
 
 /* Atomic Encrypt Context example */
 typedef struct AtomicEncCtx {
@@ -2010,6 +2072,9 @@ static WC_INLINE int myMacEncryptCb(WOLFSSL* ssl, unsigned char* macOut,
     /* hmac, not needed if aead mode */
     wolfSSL_SetTlsHmacInner(ssl, myInner, macInSz, macContent, macVerify);
 
+    ret = wc_HmacInit(&hmac, NULL, INVALID_DEVID);
+    if (ret != 0)
+        return ret;
     ret = wc_HmacSetKey(&hmac, wolfSSL_GetHmacType(ssl),
                wolfSSL_GetMacSecret(ssl, macVerify), wolfSSL_GetHmacSize(ssl));
     if (ret != 0)
@@ -2127,6 +2192,9 @@ static WC_INLINE int myDecryptVerifyCb(WOLFSSL* ssl,
 
     wolfSSL_SetTlsHmacInner(ssl, myInner, macInSz, macContent, macVerify);
 
+    ret = wc_HmacInit(&hmac, NULL, INVALID_DEVID);
+    if (ret != 0)
+        return ret;
     ret = wc_HmacSetKey(&hmac, wolfSSL_GetHmacType(ssl),
                wolfSSL_GetMacSecret(ssl, macVerify), digestSz);
     if (ret != 0)
@@ -2149,6 +2217,162 @@ static WC_INLINE int myDecryptVerifyCb(WOLFSSL* ssl,
 
     return ret;
 }
+
+#if defined(HAVE_ENCRYPT_THEN_MAC)
+
+static WC_INLINE int myEncryptMacCb(WOLFSSL* ssl, unsigned char* macOut,
+       int content, int macVerify, unsigned char* encOut,
+       const unsigned char* encIn, unsigned int encSz, void* ctx)
+{
+    int  ret;
+    Hmac hmac;
+    AtomicEncCtx* encCtx = (AtomicEncCtx*)ctx;
+    byte myInner[WOLFSSL_TLS_HMAC_INNER_SZ];
+    const char* tlsStr = "TLS";
+
+    /* example supports (d)tls aes */
+    if (wolfSSL_GetBulkCipher(ssl) != wolfssl_aes) {
+        printf("myMacEncryptCb not using AES\n");
+        return -1;
+    }
+
+    if (strstr(wolfSSL_get_version(ssl), tlsStr) == NULL) {
+        printf("myMacEncryptCb not using (D)TLS\n");
+        return -1;
+    }
+
+    /* encrypt setup on first time */
+    if (encCtx->keySetup == 0) {
+        int   keyLen = wolfSSL_GetKeySize(ssl);
+        const byte* key;
+        const byte* iv;
+
+        if (wolfSSL_GetSide(ssl) == WOLFSSL_CLIENT_END) {
+            key = wolfSSL_GetClientWriteKey(ssl);
+            iv  = wolfSSL_GetClientWriteIV(ssl);
+        }
+        else {
+            key = wolfSSL_GetServerWriteKey(ssl);
+            iv  = wolfSSL_GetServerWriteIV(ssl);
+        }
+
+        ret = wc_AesSetKey(&encCtx->aes, key, keyLen, iv, AES_ENCRYPTION);
+        if (ret != 0) {
+            printf("AesSetKey failed in myMacEncryptCb\n");
+            return ret;
+        }
+        encCtx->keySetup = 1;
+    }
+
+    /* encrypt */
+    ret = wc_AesCbcEncrypt(&encCtx->aes, encOut, encIn, encSz);
+    if (ret != 0)
+        return ret;
+
+    /* Reconstruct record header. */
+    wolfSSL_SetTlsHmacInner(ssl, myInner, encSz, content, macVerify);
+
+    ret = wc_HmacInit(&hmac, NULL, INVALID_DEVID);
+    if (ret != 0)
+        return ret;
+    ret = wc_HmacSetKey(&hmac, wolfSSL_GetHmacType(ssl),
+               wolfSSL_GetMacSecret(ssl, macVerify), wolfSSL_GetHmacSize(ssl));
+    if (ret != 0)
+        return ret;
+    ret = wc_HmacUpdate(&hmac, myInner, sizeof(myInner));
+    if (ret != 0)
+        return ret;
+    ret = wc_HmacUpdate(&hmac, encOut, encSz);
+    if (ret != 0)
+        return ret;
+    return wc_HmacFinal(&hmac, macOut);
+}
+
+
+static WC_INLINE int myVerifyDecryptCb(WOLFSSL* ssl,
+       unsigned char* decOut, const unsigned char* decIn,
+       unsigned int decSz, int content, int macVerify,
+       unsigned int* padSz, void* ctx)
+{
+    AtomicDecCtx* decCtx = (AtomicDecCtx*)ctx;
+    int ret      = 0;
+    int digestSz = wolfSSL_GetHmacSize(ssl);
+    Hmac hmac;
+    byte myInner[WOLFSSL_TLS_HMAC_INNER_SZ];
+    byte verify[WC_MAX_DIGEST_SIZE];
+    const char* tlsStr = "TLS";
+
+    /* example supports (d)tls aes */
+    if (wolfSSL_GetBulkCipher(ssl) != wolfssl_aes) {
+        printf("myMacEncryptCb not using AES\n");
+        return -1;
+    }
+
+    if (strstr(wolfSSL_get_version(ssl), tlsStr) == NULL) {
+        printf("myMacEncryptCb not using (D)TLS\n");
+        return -1;
+    }
+
+    /* Reconstruct record header. */
+    wolfSSL_SetTlsHmacInner(ssl, myInner, decSz, content, macVerify);
+
+    ret = wc_HmacInit(&hmac, NULL, INVALID_DEVID);
+    if (ret != 0)
+        return ret;
+    ret = wc_HmacSetKey(&hmac, wolfSSL_GetHmacType(ssl),
+               wolfSSL_GetMacSecret(ssl, macVerify), digestSz);
+    if (ret != 0)
+        return ret;
+    ret = wc_HmacUpdate(&hmac, myInner, sizeof(myInner));
+    if (ret != 0)
+        return ret;
+    ret = wc_HmacUpdate(&hmac, decIn, decSz);
+    if (ret != 0)
+        return ret;
+    ret = wc_HmacFinal(&hmac, verify);
+    if (ret != 0)
+        return ret;
+
+    if (XMEMCMP(verify, decOut + decSz, digestSz) != 0) {
+        printf("myDecryptVerify verify failed\n");
+        return -1;
+    }
+
+    /* decrypt */
+    if (decCtx->keySetup == 0) {
+        int   keyLen = wolfSSL_GetKeySize(ssl);
+        const byte* key;
+        const byte* iv;
+
+        /* decrypt is from other side (peer) */
+        if (wolfSSL_GetSide(ssl) == WOLFSSL_SERVER_END) {
+            key = wolfSSL_GetClientWriteKey(ssl);
+            iv  = wolfSSL_GetClientWriteIV(ssl);
+        }
+        else {
+            key = wolfSSL_GetServerWriteKey(ssl);
+            iv  = wolfSSL_GetServerWriteIV(ssl);
+        }
+
+        ret = wc_AesSetKey(&decCtx->aes, key, keyLen, iv, AES_DECRYPTION);
+        if (ret != 0) {
+            printf("AesSetKey failed in myDecryptVerifyCb\n");
+            return ret;
+        }
+        decCtx->keySetup = 1;
+    }
+
+    /* decrypt */
+    ret = wc_AesCbcDecrypt(&decCtx->aes, decOut, decIn, decSz);
+    if (ret != 0)
+        return ret;
+
+    *padSz  = *(decOut + decSz - 1) + 1;
+
+    return 0;
+}
+
+#endif
 
 
 static WC_INLINE void SetupAtomicUser(WOLFSSL_CTX* ctx, WOLFSSL* ssl)
@@ -2173,6 +2397,14 @@ static WC_INLINE void SetupAtomicUser(WOLFSSL_CTX* ctx, WOLFSSL* ssl)
 
     wolfSSL_CTX_SetDecryptVerifyCb(ctx, myDecryptVerifyCb);
     wolfSSL_SetDecryptVerifyCtx(ssl, decCtx);
+
+#if defined(HAVE_ENCRYPT_THEN_MAC)
+    wolfSSL_CTX_SetEncryptMacCb(ctx, myEncryptMacCb);
+    wolfSSL_SetEncryptMacCtx(ssl, encCtx);
+
+    wolfSSL_CTX_SetVerifyDecryptCb(ctx, myVerifyDecryptCb);
+    wolfSSL_SetVerifyDecryptCtx(ssl, decCtx);
+#endif
 }
 
 
@@ -2180,6 +2412,8 @@ static WC_INLINE void FreeAtomicUser(WOLFSSL* ssl)
 {
     AtomicEncCtx* encCtx = (AtomicEncCtx*)wolfSSL_GetMacEncryptCtx(ssl);
     AtomicDecCtx* decCtx = (AtomicDecCtx*)wolfSSL_GetDecryptVerifyCtx(ssl);
+
+    /* Encrypt-Then-MAC callbacks use same contexts. */
 
     free(decCtx);
     free(encCtx);
@@ -2225,6 +2459,9 @@ typedef struct PkCbInfo {
     #ifdef HAVE_CURVE25519
         curve25519_key curve;
     #endif
+    #ifdef HAVE_CURVE448
+        curve448_key curve;
+    #endif
     } keyGen;
 #endif
 } PkCbInfo;
@@ -2243,11 +2480,14 @@ static WC_INLINE int myEccKeyGen(WOLFSSL* ssl, ecc_key* key, word32 keySz,
     int       ret;
     WC_RNG    rng;
     PkCbInfo* cbInfo = (PkCbInfo*)ctx;
-    ecc_key*  new_key = key;
+    ecc_key*  new_key;
 #ifdef TEST_PK_PRIVKEY
     byte qx[MAX_ECC_BYTES], qy[MAX_ECC_BYTES];
     word32 qxLen = sizeof(qx), qyLen = sizeof(qy);
+
     new_key = &cbInfo->keyGen.ecc;
+#else
+    new_key = key;
 #endif
 
     (void)ssl;
@@ -2600,6 +2840,167 @@ static WC_INLINE int myX25519SharedSecret(WOLFSSL* ssl, curve25519_key* otherKey
     return ret;
 }
 #endif /* HAVE_CURVE25519 */
+
+#ifdef HAVE_ED448
+static WC_INLINE int myEd448Sign(WOLFSSL* ssl, const byte* in, word32 inSz,
+        byte* out, word32* outSz, const byte* key, word32 keySz, void* ctx)
+{
+    int         ret;
+    word32      idx = 0;
+    ed448_key   myKey;
+    byte*       keyBuf = (byte*)key;
+    PkCbInfo*   cbInfo = (PkCbInfo*)ctx;
+
+    (void)ssl;
+    (void)cbInfo;
+
+    WOLFSSL_PKMSG("PK 448 Sign: inSz %d, keySz %d\n", inSz, keySz);
+
+#ifdef TEST_PK_PRIVKEY
+    ret = load_key_file(cbInfo->ourKey, &keyBuf, &keySz);
+    if (ret != 0)
+        return ret;
+#endif
+
+    ret = wc_ed448_init(&myKey);
+    if (ret == 0) {
+        ret = wc_Ed448PrivateKeyDecode(keyBuf, &idx, &myKey, keySz);
+        if (ret == 0)
+            ret = wc_ed448_sign_msg(in, inSz, out, outSz, &myKey);
+        wc_ed448_free(&myKey);
+    }
+
+#ifdef TEST_PK_PRIVKEY
+    free(keyBuf);
+#endif
+
+    WOLFSSL_PKMSG("PK 448 Sign: ret %d, outSz %d\n", ret, *outSz);
+
+    return ret;
+}
+
+
+static WC_INLINE int myEd448Verify(WOLFSSL* ssl, const byte* sig, word32 sigSz,
+        const byte* msg, word32 msgSz, const byte* key, word32 keySz,
+        int* result, void* ctx)
+{
+    int         ret;
+    ed448_key   myKey;
+    PkCbInfo*   cbInfo = (PkCbInfo*)ctx;
+
+    (void)ssl;
+    (void)cbInfo;
+
+    WOLFSSL_PKMSG("PK 448 Verify: sigSz %d, msgSz %d, keySz %d\n", sigSz, msgSz,
+                  keySz);
+
+    ret = wc_ed448_init(&myKey);
+    if (ret == 0) {
+        ret = wc_ed448_import_public(key, keySz, &myKey);
+        if (ret == 0) {
+            ret = wc_ed448_verify_msg(sig, sigSz, msg, msgSz, result, &myKey);
+        }
+        wc_ed448_free(&myKey);
+    }
+
+    WOLFSSL_PKMSG("PK 448 Verify: ret %d, result %d\n", ret, *result);
+
+    return ret;
+}
+#endif /* HAVE_ED448 */
+
+#ifdef HAVE_CURVE448
+static WC_INLINE int myX448KeyGen(WOLFSSL* ssl, curve448_key* key,
+    unsigned int keySz, void* ctx)
+{
+    int       ret;
+    WC_RNG    rng;
+    PkCbInfo* cbInfo = (PkCbInfo*)ctx;
+
+    (void)ssl;
+    (void)cbInfo;
+
+    WOLFSSL_PKMSG("PK 448 KeyGen: keySz %d\n", keySz);
+
+    ret = wc_InitRng(&rng);
+    if (ret != 0)
+        return ret;
+
+    ret = wc_curve448_make_key(&rng, keySz, key);
+
+    wc_FreeRng(&rng);
+
+    WOLFSSL_PKMSG("PK 448 KeyGen: ret %d\n", ret);
+
+    return ret;
+}
+
+static WC_INLINE int myX448SharedSecret(WOLFSSL* ssl, curve448_key* otherKey,
+        unsigned char* pubKeyDer, unsigned int* pubKeySz,
+        unsigned char* out, unsigned int* outlen,
+        int side, void* ctx)
+{
+    int           ret;
+    curve448_key* privKey = NULL;
+    curve448_key* pubKey = NULL;
+    curve448_key  tmpKey;
+    PkCbInfo*     cbInfo = (PkCbInfo*)ctx;
+
+    (void)ssl;
+    (void)cbInfo;
+
+    WOLFSSL_PKMSG("PK 448 PMS: side %s\n",
+        side == WOLFSSL_CLIENT_END ? "client" : "server");
+
+    ret = wc_curve448_init(&tmpKey);
+    if (ret != 0) {
+        return ret;
+    }
+
+    /* for client: create and export public key */
+    if (side == WOLFSSL_CLIENT_END) {
+        WC_RNG rng;
+
+        privKey = &tmpKey;
+        pubKey = otherKey;
+
+        ret = wc_InitRng(&rng);
+        if (ret == 0) {
+            ret = wc_curve448_make_key(&rng, CURVE448_KEY_SIZE, privKey);
+            if (ret == 0) {
+                ret = wc_curve448_export_public_ex(privKey, pubKeyDer,
+                    pubKeySz, EC448_LITTLE_ENDIAN);
+            }
+            wc_FreeRng(&rng);
+        }
+    }
+
+    /* for server: import public key */
+    else if (side == WOLFSSL_SERVER_END) {
+        privKey = otherKey;
+        pubKey = &tmpKey;
+
+        ret = wc_curve448_import_public_ex(pubKeyDer, *pubKeySz, pubKey,
+            EC448_LITTLE_ENDIAN);
+    }
+    else {
+        ret = BAD_FUNC_ARG;
+    }
+
+    /* generate shared secret and return it */
+    if (ret == 0) {
+        ret = wc_curve448_shared_secret_ex(privKey, pubKey, out, outlen,
+            EC448_LITTLE_ENDIAN);
+    }
+
+    wc_curve448_free(&tmpKey);
+
+    WOLFSSL_PKMSG("PK 448 PMS: ret %d, pubKeySz %d, outLen %d\n",
+        ret, *pubKeySz, *outlen);
+
+    return ret;
+}
+#endif /* HAVE_CURVE448 */
 
 #endif /* HAVE_ECC */
 
@@ -3027,6 +3428,14 @@ static WC_INLINE void SetupPkCallbacks(WOLFSSL_CTX* ctx)
         wolfSSL_CTX_SetX25519KeyGenCb(ctx, myX25519KeyGen);
         wolfSSL_CTX_SetX25519SharedSecretCb(ctx, myX25519SharedSecret);
     #endif
+    #ifdef HAVE_ED448
+        wolfSSL_CTX_SetEd448SignCb(ctx, myEd448Sign);
+        wolfSSL_CTX_SetEd448VerifyCb(ctx, myEd448Verify);
+    #endif
+    #ifdef HAVE_CURVE448
+        wolfSSL_CTX_SetX448KeyGenCb(ctx, myX448KeyGen);
+        wolfSSL_CTX_SetX448SharedSecretCb(ctx, myX448SharedSecret);
+    #endif
     #ifndef NO_RSA
         wolfSSL_CTX_SetRsaSignCb(ctx, myRsaSign);
         wolfSSL_CTX_SetRsaVerifyCb(ctx, myRsaVerify);
@@ -3059,6 +3468,14 @@ static WC_INLINE void SetupPkCallbackContexts(WOLFSSL* ssl, void* myCtx)
     #ifdef HAVE_CURVE25519
         wolfSSL_SetX25519KeyGenCtx(ssl, myCtx);
         wolfSSL_SetX25519SharedSecretCtx(ssl, myCtx);
+    #endif
+    #ifdef HAVE_ED448
+        wolfSSL_SetEd448SignCtx(ssl, myCtx);
+        wolfSSL_SetEd448VerifyCtx(ssl, myCtx);
+    #endif
+    #ifdef HAVE_CURVE448
+        wolfSSL_SetX448KeyGenCtx(ssl, myCtx);
+        wolfSSL_SetX448SharedSecretCtx(ssl, myCtx);
     #endif
     #ifndef NO_RSA
         wolfSSL_SetRsaSignCtx(ssl, myCtx);
